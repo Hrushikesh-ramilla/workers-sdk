@@ -478,13 +478,29 @@ describe("r2", () => {
 				expect(parseExpires("2026-10-21")).toBe(expected);
 			});
 
-			it("should preserve numeric epoch milliseconds", ({ expect }) => {
-				expect(parseExpires("1792966000000")).toBe(1792966000000);
+			it("should parse ISO date-times as UTC when timezone is omitted", ({
+				expect,
+			}) => {
+				const expected = Date.parse("2026-10-21T12:00:00Z");
+				expect(parseExpires("2026-10-21T12:00:00")).toBe(expected);
 			});
 
-			it("should throw UserError for invalid date strings", ({ expect }) => {
+			it("should preserve numeric epoch milliseconds including zero and negative values", ({
+				expect,
+			}) => {
+				expect(parseExpires("1792966000000")).toBe(1792966000000);
+				expect(parseExpires("0")).toBe(0);
+				expect(parseExpires("-1000")).toBe(-1000);
+			});
+
+			it("should throw UserError for invalid date strings and impossible calendar dates", ({
+				expect,
+			}) => {
 				expect(() => parseExpires("invalid-date")).toThrow(
 					"Cannot parse 'invalid-date' as a valid date."
+				);
+				expect(() => parseExpires("2026-02-30")).toThrow(
+					"Cannot parse '2026-02-30' as a valid date."
 				);
 			});
 		});

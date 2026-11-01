@@ -70,16 +70,65 @@ export function validateUploadSize(key: string, sizeBytes: number): void {
  * or raw epoch milliseconds.
  */
 export function parseExpires(expires: string): number {
-	const parsed = Date.parse(expires);
-	if (!isNaN(parsed)) {
-		return parsed;
-	}
-	if (/^\d+$/.test(expires)) {
-		const num = parseInt(expires, 10);
-		if (!isNaN(num)) {
+	const trimmed = expires.trim();
+	if (/^-?\d+$/.test(trimmed)) {
+		const num = Number(trimmed);
+		if (Number.isSafeInteger(num)) {
 			return num;
 		}
 	}
+
+	const isoMatch = trimmed.match(
+		/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|([+-])(\d{2})(?::?(\d{2}))?)?)?$/
+	);
+	if (isoMatch) {
+		const year = Number(isoMatch[1]);
+		const month = Number(isoMatch[2]);
+		const day = Number(isoMatch[3]);
+		if (month < 1 || month > 12 || day < 1 || day > 31) {
+			throw new UserError(
+				`Cannot parse '${expires}' as a valid date. Please provide a valid date string (e.g. "Wed, 21 Oct 2026 07:28:00 GMT" or "2026-10-21") or epoch milliseconds.`,
+				{ telemetryMessage: "r2 object invalid expires date" }
+			);
+		}
+		const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+		const daysInMonth = [
+			31,
+			isLeap ? 29 : 28,
+			31,
+			30,
+			31,
+			30,
+			31,
+			31,
+			30,
+			31,
+			30,
+			31,
+		];
+		if (day > daysInMonth[month - 1]) {
+			throw new UserError(
+				`Cannot parse '${expires}' as a valid date. Please provide a valid date string (e.g. "Wed, 21 Oct 2026 07:28:00 GMT" or "2026-10-21") or epoch milliseconds.`,
+				{ telemetryMessage: "r2 object invalid expires date" }
+			);
+		}
+		const hasT = trimmed.includes("T");
+		const hasTz =
+			trimmed.endsWith("Z") ||
+			trimmed.endsWith("z") ||
+			/[+-]\d{2}(?::?\d{2})?$/.test(trimmed);
+		const dateStringToParse = hasT && !hasTz ? `${trimmed}Z` : trimmed;
+		const parsed = Date.parse(dateStringToParse);
+		if (!isNaN(parsed)) {
+			return parsed;
+		}
+	}
+
+	const parsed = Date.parse(trimmed);
+	if (!isNaN(parsed)) {
+		return parsed;
+	}
+
 	throw new UserError(
 		`Cannot parse '${expires}' as a valid date. Please provide a valid date string (e.g. "Wed, 21 Oct 2026 07:28:00 GMT" or "2026-10-21") or epoch milliseconds.`,
 		{ telemetryMessage: "r2 object invalid expires date" }
