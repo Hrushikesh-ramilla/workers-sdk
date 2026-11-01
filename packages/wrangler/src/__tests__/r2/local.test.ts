@@ -436,7 +436,7 @@ describe("r2", () => {
 					runWrangler(
 						`r2 object put bucket-object-test/file-invalid --file ./expires-payload --expires not-a-date`
 					)
-				).rejects.toThrowError(/Cannot parse 'not-a-date' as a valid date/);
+				).rejects.toThrow(/Cannot parse 'not-a-date' as a valid date/);
 
 				// 5. Bulk put with --expires
 				fs.writeFileSync(
